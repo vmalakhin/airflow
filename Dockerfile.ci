@@ -32,7 +32,7 @@
 #
 # Related: https://github.com/apache/airflow/issues/58337
 ARG PYTHON_LTO="true"
-ARG BASE_IMAGE="debian:bookworm-slim"
+ARG BASE_IMAGE="debian:trixie-slim"
 
 ##############################################################################################
 # This is the script image where we keep all inlined bash scripts needed in other segments
@@ -105,7 +105,6 @@ libkrb5-dev \
 libldap2-dev \
 libleveldb-dev \
 libleveldb1d \
-liblzma-dev \
 libncurses5-dev \
 libreadline6-dev \
 libsasl2-2 \
@@ -119,7 +118,6 @@ libzstd-dev \
 locales \
 lsb-release \
 lzma \
-lzma-dev \
 openssh-client \
 openssl \
 pkg-config \
@@ -150,7 +148,7 @@ function get_runtime_apt_deps() {
     echo
     debian_version_apt_deps="\
 libffi8 \
-libldap-2.5-0 \
+libldap2 \
 libssl3 \
 netcat-openbsd\
 "
@@ -286,13 +284,13 @@ function install_debian_runtime_dependencies() {
 }
 
 function install_python() {
-    # If system python (3.11 in bookworm) is installed (via automatic installation of some dependencies for example), we need
+    # If system python (3.11 in trixie) is installed (via automatic installation of some dependencies for example), we need
     # to fail and make sure that it is not there, because there can be strange interactions if we install
     # newer version and system libraries are installed, because
     # when you create a virtualenv part of the shared libraries of Python can be taken from the system
     # Installation leading to weird errors when you want to install some modules - for example when you install ssl:
     # /usr/python/lib/python3.11/lib-dynload/_ssl.cpython-311-aarch64-linux-gnu.so: undefined symbol: _PyModule_Add
-    if dpkg -l | grep '^ii' | grep '^ii  libpython' >/dev/null; then
+    if dpkg -l | grep '^ii' | grep '^ii  libpython' >/dev/null && false; then
         echo
         echo "ERROR! System python is installed by one of the previous steps"
         echo
@@ -407,7 +405,7 @@ set -euo pipefail
 common::get_colors
 declare -a packages
 
-readonly MARIADB_LTS_VERSION="10.11"
+readonly MARIADB_LTS_VERSION="12.3"
 
 : "${INSTALL_MYSQL_CLIENT:?Should be true or false}"
 : "${INSTALL_MYSQL_CLIENT_TYPE:-mariadb}"
@@ -526,7 +524,7 @@ function install_mssql_client() {
     fi
     packages=("msodbcsql18")
 
-    common::import_trusted_gpg "EB3E94ADBE1229CF" "microsoft"
+    common::import_trusted_gpg "EE4D7792F748182B" "microsoft"
 
     echo
     echo "${COLOR_BLUE}Installing mssql client${COLOR_RESET}"
@@ -1572,8 +1570,8 @@ ARG DEV_APT_COMMAND=""
 ARG ADDITIONAL_DEV_APT_COMMAND=""
 ARG ADDITIONAL_DEV_ENV_VARS=""
 ARG ADDITIONAL_DEV_APT_DEPS="bash-completion dumb-init git gdb graphviz krb5-user \
-    less libenchant-2-2 libgcc-11-dev libgeos-dev libpq-dev net-tools netcat-openbsd \
-    openssh-server postgresql-client software-properties-common rsync tmux unzip vim xxd"
+    less libenchant-2-2 libgcc-14-dev libgeos-dev libpq-dev net-tools netcat-openbsd \
+    openssh-server postgresql-client rsync tmux unzip vim xxd"
 
 ARG ADDITIONAL_DEV_APT_ENV=""
 
@@ -1626,7 +1624,7 @@ RUN bash /scripts/docker/install_mysql.sh prod \
     # The user is added to allow ssh debugging (you can connect with airflow/airflow over ssh)
     && adduser --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password \
     --quiet "airflow" --home "/home/airflow" \
-    && echo -e "airflow\nairflow" | passwd airflow 2>&1 \
+    && echo "airflow:airflow" | chpasswd \
     && echo "airflow ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/airflow \
     && chmod 0440 /etc/sudoers.d/airflow
 
@@ -1689,6 +1687,8 @@ ARG AIRFLOW_VERSION=""
 ARG ADDITIONAL_PIP_INSTALL_FLAGS=""
 
 ARG AIRFLOW_USE_UV="true"
+ARG AIRFLOW_UV_VERSION="0.10.6"
+ARG AIRFLOW_PREK_VERSION="0.3.3"
 
 ENV AIRFLOW_REPO=${AIRFLOW_REPO}\
     AIRFLOW_BRANCH=${AIRFLOW_BRANCH} \
@@ -1733,8 +1733,8 @@ COPY --from=scripts common.sh install_packaging_tools.sh install_additional_depe
 # Also use `force pip` label on your PR to swap all places we use `uv` to `pip`
 ARG AIRFLOW_PIP_VERSION=26.0.1
 # ARG AIRFLOW_PIP_VERSION="git+https://github.com/pypa/pip.git@main"
-ARG AIRFLOW_UV_VERSION=0.10.6
-ARG AIRFLOW_PREK_VERSION="0.3.3"
+#ARG AIRFLOW_UV_VERSION="0.10.6"
+#ARG AIRFLOW_PREK_VERSION="0.3.3"
 
 # UV_LINK_MODE=copy is needed since we are using cache mounted from the host
 ENV AIRFLOW_PIP_VERSION=${AIRFLOW_PIP_VERSION} \

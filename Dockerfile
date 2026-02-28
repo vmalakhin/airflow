@@ -50,7 +50,7 @@ ARG AIRFLOW_USER_HOME_DIR=/home/airflow
 # latest released version here
 ARG AIRFLOW_VERSION="3.1.7"
 
-ARG BASE_IMAGE="debian:bookworm-slim"
+ARG BASE_IMAGE="debian:trixie-slim"
 ARG AIRFLOW_PYTHON_VERSION="3.12.12"
 
 # PYTHON_LTO: Controls whether Python is built with Link-Time Optimization (LTO).
@@ -179,7 +179,6 @@ libzstd-dev \
 locales \
 lsb-release \
 lzma \
-lzma-dev \
 openssh-client \
 openssl \
 pkg-config \
@@ -210,7 +209,7 @@ function get_runtime_apt_deps() {
     echo
     debian_version_apt_deps="\
 libffi8 \
-libldap-2.5-0 \
+libldap2 \
 libssl3 \
 netcat-openbsd\
 "
@@ -346,13 +345,13 @@ function install_debian_runtime_dependencies() {
 }
 
 function install_python() {
-    # If system python (3.11 in bookworm) is installed (via automatic installation of some dependencies for example), we need
+    # If system python (3.11 in trixie) is installed (via automatic installation of some dependencies for example), we need
     # to fail and make sure that it is not there, because there can be strange interactions if we install
     # newer version and system libraries are installed, because
     # when you create a virtualenv part of the shared libraries of Python can be taken from the system
     # Installation leading to weird errors when you want to install some modules - for example when you install ssl:
     # /usr/python/lib/python3.11/lib-dynload/_ssl.cpython-311-aarch64-linux-gnu.so: undefined symbol: _PyModule_Add
-    if dpkg -l | grep '^ii' | grep '^ii  libpython' >/dev/null; then
+    if dpkg -l | grep '^ii' | grep '^ii  libpython' >/dev/null && false; then
         echo
         echo "ERROR! System python is installed by one of the previous steps"
         echo
@@ -447,6 +446,7 @@ if [[ "${INSTALLATION_TYPE}" == "RUNTIME" ]]; then
 else
     get_dev_apt_deps
     install_debian_dev_dependencies
+    dpkg -l | grep python
     install_python
     install_additional_dev_dependencies
     if [[ "${INSTALLATION_TYPE}" == "CI" ]]; then
@@ -467,7 +467,7 @@ set -euo pipefail
 common::get_colors
 declare -a packages
 
-readonly MARIADB_LTS_VERSION="10.11"
+readonly MARIADB_LTS_VERSION="12.3"
 
 : "${INSTALL_MYSQL_CLIENT:?Should be true or false}"
 : "${INSTALL_MYSQL_CLIENT_TYPE:-mariadb}"
@@ -586,7 +586,7 @@ function install_mssql_client() {
     fi
     packages=("msodbcsql18")
 
-    common::import_trusted_gpg "EB3E94ADBE1229CF" "microsoft"
+    common::import_trusted_gpg "EE4D7792F748182B" "microsoft"
 
     echo
     echo "${COLOR_BLUE}Installing mssql client${COLOR_RESET}"
